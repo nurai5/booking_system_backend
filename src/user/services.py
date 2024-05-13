@@ -7,7 +7,7 @@ from pymongo.errors import DuplicateKeyError
 
 from src.user.schemas import UserInDB, UserCreate
 from src.user.security import hash_password, verify_password
-from src.core.settings import db, secret_key, algorithm
+from src.core.settings import db, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_MINUTES
 
 
 async def insert_user(user: UserCreate):
@@ -32,6 +32,20 @@ async def authenticate_user(email: str, password: str):
     return None
 
 
+async def generate_tokens(subject: str) -> tuple[str, str]:
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    refresh_token_expires = timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
+
+    access_token = await create_access_token(
+        data={"sub": subject}, expires_delta=access_token_expires
+    )
+    refresh_token = await create_access_token(
+        data={"sub": subject}, expires_delta=refresh_token_expires
+    )
+
+    return access_token, refresh_token
+
+
 async def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     if expires_delta:
@@ -39,7 +53,8 @@ async def create_access_token(data: dict, expires_delta: timedelta | None = None
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
+    encoded_jwt = jwt.encode(claims=to_encode, key=SECRET_KEY, algorithm=ALGORITHM)
+
     return encoded_jwt
 
 
@@ -53,16 +68,20 @@ async def verify_token(token: str = Depends(oauth2_scheme)):
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
-        username: str = payload.get("sub")
-        if username is None:
+        payload = jwt.decode(token=token, key=SECRET_KEY, algorithms=[ALGORITHM])
+
+        user_id: str = payload.get("sub")
+        if user_id is None:
             raise credentials_exception
+
         expiration = payload.get("exp")
         if expiration and datetime.now(timezone.utc) > datetime.fromtimestamp(expiration, timezone.utc):
             raise HTTPException(status_code=401, detail="Token expired")
-        user = await UserInDB.by_email(username)
+
+        user = await UserInDB.by_user_id(user_id)
         if user is None:
             raise credentials_exception
-    except JWTError:
+
+    except JWTError as e:
         raise credentials_exception
     return user

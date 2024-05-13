@@ -5,7 +5,7 @@ from fastapi import HTTPException
 
 from src.booking.dependencies import check_booking_overlap
 from src.booking.schemas import BookingItemInDB, individual_booking_item_serial
-from src.core.settings import db, collection_bookings, start_time_from_env, end_time_from_env
+from src.core.settings import db, collection_bookings, START_TIME_FROM_ENV, END_TIME_FROM_ENV
 
 
 async def insert_booking_item(
@@ -49,8 +49,8 @@ async def find_facility_bookings(
 
 
 def get_default_time_slots(date: datetime) -> List:
-    start_time = datetime.combine(date, datetime.strptime(start_time_from_env, '%H:%M').time())
-    end_time = datetime.combine(date + timedelta(days=1), datetime.strptime(end_time_from_env, '%H:%M').time())
+    start_time = datetime.combine(date, datetime.strptime(START_TIME_FROM_ENV, '%H:%M').time())
+    end_time = datetime.combine(date + timedelta(days=1), datetime.strptime(END_TIME_FROM_ENV, '%H:%M').time())
 
     slots = []
     current_time = start_time
