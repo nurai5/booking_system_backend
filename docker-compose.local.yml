@@ -1,0 +1,35 @@
+version: '3.9'
+
+services:
+  mongodb:
+    image: mongo:6-jammy
+    container_name: mongodb
+    ports:
+      - '27018:27017'
+    volumes:
+      - dbdata6:/data/db
+    networks:
+      - backend
+
+  fastapi:
+    container_name: fastapi
+    build: .
+    command: uvicorn main:app --reload --host 0.0.0.0 --port 8000
+    ports:
+      - '8080:8000'
+    volumes:
+      - .:/code
+    depends_on:
+      - mongodb
+    networks:
+      - backend
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/booking_system
+      - IS_LOCAL_MONGODB=True
+
+volumes:
+  dbdata6:
+
+networks:
+  backend:
+    driver: bridge

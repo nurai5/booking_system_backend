@@ -7,7 +7,7 @@ from src.user.schemas import UserInDB
 
 
 async def init_db():
-    client = AsyncIOMotorClient("mongodb://localhost:27017")
+    client = AsyncIOMotorClient("mongodb://mongodb:27017")
     await init_beanie(database=client.booking_system, document_models=[
         UserInDB,
         FacilityItemInDB,
